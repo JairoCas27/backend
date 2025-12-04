@@ -257,7 +257,7 @@ public class ExcelExportService {
 
             Picture pict = drawing.createPicture(anchor, pictureIdx);
             // ajustar tamaño relativo: se puede afinar (0.8f - 1.5f)
-            pict.resize(1.5);
+            pict.resize(0.5);
 
         } catch (Exception e) {
             // si algo falla con el logo, no interrumpe la generación del excel

@@ -1,0 +1,85 @@
+version: '3.8'
+
+networks:
+  finli-network:
+    driver: bridge
+    name: finli-network
+
+services:
+  # Base de datos MySQL
+  mysql-db:
+    image: mysql:8.0
+    container_name: finli-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: Kaiser2702
+      MYSQL_DATABASE: FinLiApp
+      MYSQL_ROOT_HOST: '%'
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    command: 
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+    networks:
+      - finli-network
+    restart: unless-stopped
+
+  # Aplicación Spring Boot
+  finli-app:
+    build: .
+    container_name: finli-app
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-db:3306/FinLiApp?sslMode=DISABLED&serverTimezone=UTC&allowPublicKeyRetrieval=true&useSSL=false
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=Kaiser2702
+    depends_on:
+      - mysql-db
+    networks:
+      - finli-network
+    restart: unless-stopped
+
+  # Prometheus para métricas
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: finli-prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=7d'
+      - '--web.enable-lifecycle'
+    ports:
+      - "9090:9090"
+    networks:
+      - finli-network
+    restart: unless-stopped
+
+  # Grafana para dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: finli-grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    volumes:
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    networks:
+      - finli-network
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  prometheus_data:
+  grafana_data:

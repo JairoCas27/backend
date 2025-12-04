@@ -1,0 +1,6 @@
+# Dockerfile simplificado sin multi-stage
+FROM openjdk:17-alpine
+WORKDIR /app
+COPY target/finli-backend-*.jar app.jar
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "app.jar"]

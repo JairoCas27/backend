@@ -17,6 +17,7 @@ com\finli\dto\UsuarioResponse$EstadoUsuarioResponse.class
 com\finli\service\FuenteCategoriaService.class
 com\finli\controller\IngresoController.class
 com\finli\dto\UserDetailDTO.class
+com\finli\service\MetricsService.class
 com\finli\dto\SuscripcionResponse.class
 com\finli\model\MedioPago$MedioPagoBuilder.class
 com\finli\service\UsuarioService.class
@@ -87,6 +88,7 @@ com\finli\dto\SuscripcionResponse$SuscripcionResponseBuilder.class
 com\finli\service\MedioPagoService.class
 com\finli\model\EstadoSuscripcion$EstadoSuscripcionBuilder.class
 com\finli\config\CorsConfig.class
+com\finli\config\MetricsConfig.class
 com\finli\model\Transaccion.class
 com\finli\dto\CompraRequest.class
 com\finli\model\Categoria.class

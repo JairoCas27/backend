@@ -8,6 +8,7 @@ import com.finli.model.Usuario;
 import com.finli.repository.UsuarioRepository;
 import com.finli.service.AdministradorService;
 import com.finli.service.ExcelExportService;
+import io.micrometer.core.annotation.Timed;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -37,6 +38,7 @@ public class AdminUsuarioController {
 
     // --- 1. LISTAR USUARIOS (GET) ---
     @GetMapping("/users")
+    @Timed(value = "finli.admin.usuarios.listar_completo", description = "Tiempo de listado completo de usuarios")
     public ResponseEntity<List<UserAdminDTO>> listarUsuariosParaAdmin(
             @RequestParam(value = "search", required = false) String search) {
 
@@ -60,6 +62,7 @@ public class AdminUsuarioController {
 
     // --- 2. CREAR USUARIO (POST) ---
     @PostMapping("/users")
+    @Timed(value = "finli.admin.usuarios.crear_completo", description = "Tiempo de creación completa de usuario")
     public ResponseEntity<?> crearUsuario(@RequestBody UserCreateDTO dto) {
         try {
             Usuario nuevoUsuario = administradorService.crearUsuarioConSuscripcion(dto);
@@ -75,6 +78,7 @@ public class AdminUsuarioController {
 
     // --- 3. OBTENER DETALLE PARA EDITAR (GET /users/{id}) ---
     @GetMapping("/users/{id}")
+    @Timed(value = "finli.admin.usuarios.detalle", description = "Tiempo de obtención de detalle de usuario")
     public ResponseEntity<?> obtenerUsuario(@PathVariable Integer id) {
         try {
             UserDetailDTO detalle = administradorService.obtenerUsuarioParaEditar(id);
@@ -86,6 +90,7 @@ public class AdminUsuarioController {
 
     // --- 4. ACTUALIZAR USUARIO (PUT /users/{id}) ---
     @PutMapping("/users/{id}")
+    @Timed(value = "finli.admin.usuarios.actualizar_completo", description = "Tiempo de actualización completa de usuario")
     public ResponseEntity<?> actualizarUsuario(@PathVariable Integer id, @RequestBody UserCreateDTO dto) {
         try {
             Usuario actualizado = administradorService.actualizarUsuarioDesdeAdmin(id, dto);
@@ -97,6 +102,7 @@ public class AdminUsuarioController {
 
     // --- 5. EXPORTAR EXCEL (GET /users/export/excel) [NUEVO] ---
     @GetMapping("/users/export/excel")
+    @Timed(value = "finli.admin.usuarios.exportar_excel", description = "Tiempo de exportación a Excel")
     public ResponseEntity<byte[]> exportarExcel() {
         try {
             // 1. Obtenemos la lista de usuarios (entidades completas)
@@ -124,6 +130,7 @@ public class AdminUsuarioController {
     }
 
    @GetMapping("/users/latest")
+   @Timed(value = "finli.admin.usuarios.ultimos", description = "Tiempo de obtención de últimos usuarios")
    public ResponseEntity<List<UserHomeDTO>> getLatestUsersForHome() {
        List<Object[]> rows = usuarioRepository.findLatestUsersForHomeRaw();
        List<UserHomeDTO> dto = rows.stream()
@@ -142,12 +149,14 @@ public class AdminUsuarioController {
 
    // Nuevo: crecimiento de usuarios por mes (últimos 12 meses)
    @GetMapping("/usuarios/crecimiento-mensual")
+   @Timed(value = "finli.admin.usuarios.crecimiento", description = "Tiempo de cálculo de crecimiento mensual")
    public ResponseEntity<List<Integer>> getUserGrowthLast12Months() {
        return ResponseEntity.ok(administradorService.obtenerCrecimientoUsuariosUltimos12Meses());
    }
    
    // Nuevo endpoint para estadísticas del dashboard
    @GetMapping("/stats/dashboard")
+   @Timed(value = "finli.admin.estadisticas.dashboard", description = "Tiempo de obtención de estadísticas del dashboard")
    public ResponseEntity<Map<String, Object>> getDashboardStats() {
        Map<String, Object> stats = new HashMap<>();
        
@@ -156,17 +165,10 @@ public class AdminUsuarioController {
        stats.put("totalUsers", totalUsers);
        
        // 2. Usuarios con suscripción activa (estado de suscripción = 1)
-       // Necesitamos contar usuarios que tienen al menos una suscripción activa
-       // Vamos a hacerlo mediante una consulta en el servicio
        Long subscribedUsers = administradorService.countUsuariosConSuscripcionActiva();
        stats.put("subscribedUsers", subscribedUsers != null ? subscribedUsers : 0);
        
-       // 3. Transacciones recientes (últimos 30 días)
-       // TODO: Necesitarás implementar este método en TransaccionRepository
-       // long recentTransactions = transaccionRepository.countByFechaAfter(LocalDateTime.now().minusDays(30));
-       // stats.put("recentTransactions", recentTransactions);
-       
-       // 4. Crecimiento de usuarios (últimos 12 meses)
+       // 3. Crecimiento de usuarios (últimos 12 meses)
        List<Integer> growthData = administradorService.obtenerCrecimientoUsuariosUltimos12Meses();
        stats.put("userGrowth", growthData);
        
@@ -175,8 +177,9 @@ public class AdminUsuarioController {
    
    // Método auxiliar para contar usuarios activos
    @GetMapping("/stats/active-users")
+   @Timed(value = "finli.admin.usuarios.activos", description = "Tiempo de conteo de usuarios activos")
    public ResponseEntity<Long> getActiveUsersCount() {
-       Long activeUsers = usuarioRepository.countByEstadoUsuario_IdEstado(1); // Asumiendo que 1 es "Activo"
+       Long activeUsers = usuarioRepository.countByEstadoUsuario_IdEstado(1);
        return ResponseEntity.ok(activeUsers != null ? activeUsers : 0L);
    }
 }

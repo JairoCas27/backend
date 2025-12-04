@@ -10,6 +10,7 @@ import com.finli.repository.CategoriaRepository;
 import com.finli.repository.MedioPagoRepository;
 import com.finli.repository.SubcategoriaRepository;
 import com.finli.repository.TransaccionRepository;
+import io.micrometer.core.annotation.Timed;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -29,8 +30,10 @@ public class TransaccionService {
     private final SubcategoriaRepository subcategoriaRepo;
     private final MedioPagoRepository medioPagoRepo;
     private final MedioPagoService medioPagoService;
+    private final MetricsService metricsService;
 
     /* ---------- Crear transacción ---------- */
+    @Timed(value = "finli.transacciones.crear.service", description = "Tiempo de servicio de creación de transacción")
     public Transaccion crearTransaccion(TransaccionRequest dto) {
         Preconditions.checkArgument(StringUtils.isNotBlank(dto.getEtiqueta()), "Etiqueta no puede estar vacía");
         Preconditions.checkNotNull(dto.getMonto(), "Monto no puede ser null");
@@ -39,6 +42,9 @@ public class TransaccionService {
         Preconditions.checkNotNull(dto.getIdMedioPago(), "idMedioPago es obligatorio");
         Preconditions.checkNotNull(dto.getIdCategoria(), "idCategoria es obligatorio");
         Preconditions.checkNotNull(dto.getIdSubcategoria(), "idSubcategoria es obligatorio");
+
+        // Medir tiempo de creación de transacción
+        long start = System.currentTimeMillis();
 
         // ✅ Restar saldo ANTES de guardar la transacción
         medioPagoService.restarSaldo(dto.getIdMedioPago(), dto.getMonto());
@@ -56,34 +62,45 @@ public class TransaccionService {
                 .tipo("GASTO")
                 .build();
 
-        return transaccionRepo.save(t);
+        Transaccion transaccionGuardada = transaccionRepo.save(t);
+
+        // Registrar métrica personalizada
+        metricsService.incrementTransaccionCreada();
+
+        long end = System.currentTimeMillis();
+        metricsService.recordTransaccionTime(end - start);
+
+        return transaccionGuardada;
     }
 
     /* ---------- Listar transacciones por usuario ---------- */
-public List<TransaccionResponse> listarPorUsuario(Integer idUsuario) {
-    List<Transaccion> transacciones = transaccionRepo.findByIdUsuario(idUsuario);
+    @Timed(value = "finli.transacciones.listar.service", description = "Tiempo de servicio de listado de transacciones")
+    public List<TransaccionResponse> listarPorUsuario(Integer idUsuario) {
+        List<Transaccion> transacciones = transaccionRepo.findByIdUsuario(idUsuario);
 
-    return transacciones.stream().map(t -> {
-        Categoria cat = categoriaRepo.findById(t.getIdCategoria()).orElse(null);
-        Subcategoria sub = subcategoriaRepo.findById(t.getIdSubcategoria()).orElse(null);
-        MedioPago medio = medioPagoRepo.findById(t.getIdMedioPago()).orElse(null);
+        return transacciones.stream().map(t -> {
+            Categoria cat = categoriaRepo.findById(t.getIdCategoria()).orElse(null);
+            Subcategoria sub = subcategoriaRepo.findById(t.getIdSubcategoria()).orElse(null);
+            MedioPago medio = medioPagoRepo.findById(t.getIdMedioPago()).orElse(null);
 
-        return TransaccionResponse.builder()
-                .idTransaccion(t.getIdTransaccion())
-                .nombre(t.getNombreTransaccion())
-                .categoria(cat != null ? cat.getNombreCategoria() : "Desconocido")
-                .subcategoria(sub != null ? sub.getNombreSubcategoria() : "Desconocido")
-                .mediopago(medio != null ? medio.getNombreMedioPago() : "Desconocido")
-                .monto(t.getMonto())
-                .fecha(t.getFecha())
-                .descripcion(t.getDescripcionTransaccion())
-                .imagen(t.getImagen())
-                .build();
-    }).collect(Collectors.toList());
-}
+            return TransaccionResponse.builder()
+                    .idTransaccion(t.getIdTransaccion())
+                    .nombre(t.getNombreTransaccion())
+                    .categoria(cat != null ? cat.getNombreCategoria() : "Desconocido")
+                    .subcategoria(sub != null ? sub.getNombreSubcategoria() : "Desconocido")
+                    .mediopago(medio != null ? medio.getNombreMedioPago() : "Desconocido")
+                    .monto(t.getMonto())
+                    .fecha(t.getFecha())
+                    .descripcion(t.getDescripcionTransaccion())
+                    .imagen(t.getImagen())
+                    .build();
+        }).collect(Collectors.toList());
+    }
 
     /* ---------- Eliminar transacción ---------- */
+    @Timed(value = "finli.transacciones.eliminar.service", description = "Tiempo de servicio de eliminación de transacción")
     public void eliminarTransaccion(Integer id) {
         transaccionRepo.deleteById(id);
+        metricsService.incrementTransaccionEliminada();
     }
 }

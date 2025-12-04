@@ -3,6 +3,7 @@ package com.finli.controller;
 import com.finli.dto.IngresoRequest;
 import com.finli.model.Ingreso;
 import com.finli.service.IngresoService;
+import io.micrometer.core.annotation.Timed;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -19,22 +20,26 @@ public class IngresoController {
     private final IngresoService service;
 
     @GetMapping
+    @Timed(value = "finli.ingresos.listar", description = "Tiempo de listado de ingresos")
     public List<Ingreso> listar() {
         return service.listarTodos();
     }
 
     @GetMapping("/usuario/{idUsuario}")
+    @Timed(value = "finli.ingresos.listar_usuario", description = "Tiempo de listado de ingresos por usuario")
     public List<Ingreso> listarPorUsuario(@PathVariable Integer idUsuario) {
         return service.listarPorUsuario(idUsuario);
     }
 
     @PostMapping
+    @Timed(value = "finli.ingresos.crear", description = "Tiempo de creación de ingreso")
     public ResponseEntity<Ingreso> crear(@Valid @RequestBody IngresoRequest dto) {
         Ingreso guardado = service.crear(dto);
         return ResponseEntity.ok(guardado);
     }
 
     @DeleteMapping("/{id}")
+    @Timed(value = "finli.ingresos.eliminar", description = "Tiempo de eliminación de ingreso")
     public ResponseEntity<Void> eliminar(@PathVariable Integer id) {
         service.eliminar(id);
         return ResponseEntity.noContent().build();

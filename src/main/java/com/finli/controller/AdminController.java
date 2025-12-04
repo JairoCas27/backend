@@ -1,15 +1,11 @@
 package com.finli.controller;
 
-// NUEVA IMPORTACIÓN NECESARIA
 import com.finli.dto.PaginacionUsuarioResponse;
-// La importación de UsuarioResponse ya no es necesaria en el método listarUsuarios,
-// pero la dejamos si se usa en otros métodos.
-
-
 import com.finli.model.EstadoUsuario;
 import com.finli.model.Usuario;
 import com.finli.service.AdministradorService;
 import com.finli.service.ExcelExportService;
+import io.micrometer.core.annotation.Timed;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -30,14 +26,8 @@ public class AdminController {
     private final AdministradorService administradorService;
     private final ExcelExportService excelExportService;
 
-    // =================================================================================
-    // === LISTAR USUARIOS (REEMPLAZADO por Paginación y Filtro) ===
-    // =================================================================================
-    /**
-     * Endpoint para obtener usuarios con paginación y filtrado por estado.
-     * Endpoint: GET /api/admin/usuarios?page=1&limit=10&status=all
-     */
-    @GetMapping("/usuarios") // Mapeado a /api/admin/usuarios
+    @GetMapping("/usuarios")
+    @Timed(value = "finli.admin.usuarios.listar", description = "Tiempo de listado de usuarios con paginación")
     public ResponseEntity<PaginacionUsuarioResponse> getUsuariosPaginadosYFiltrados(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int limit,
@@ -60,6 +50,7 @@ public class AdminController {
 
     // CREAR CLIENTE (Se mantiene)
     @PostMapping("/usuarios")
+    @Timed(value = "finli.admin.usuarios.crear", description = "Tiempo de creación de usuario")
     public ResponseEntity<Usuario> crearCliente(@RequestBody Usuario usuario) {
         Usuario nuevoUsuario = administradorService.guardarCliente(usuario);
         return new ResponseEntity<>(nuevoUsuario, HttpStatus.CREATED);
@@ -67,6 +58,7 @@ public class AdminController {
 
     // ACTUALIZAR USUARIO (Se mantiene)
     @PutMapping("/usuarios/{id}")
+    @Timed(value = "finli.admin.usuarios.actualizar", description = "Tiempo de actualización de usuario")
     public ResponseEntity<Usuario> actualizarUsuario(@PathVariable Integer id, @RequestBody Usuario usuario) {
         usuario.setId(id);
 
@@ -79,6 +71,7 @@ public class AdminController {
 
     // LISTAR ESTADOS DE USUARIO (Se mantiene)
     @GetMapping("/estados-usuario")
+    @Timed(value = "finli.admin.usuarios.estados", description = "Tiempo de listar estados de usuario")
     public ResponseEntity<List<EstadoUsuario>> listarEstados() {
         List<EstadoUsuario> estados = administradorService.listarTodosEstadosUsuario();
         return ResponseEntity.ok(estados);
@@ -86,6 +79,7 @@ public class AdminController {
 
     // ELIMINAR USUARIO (ELIMINACIÓN LÓGICA - Se mantiene)
     @DeleteMapping("/usuarios/{id}")
+    @Timed(value = "finli.admin.usuarios.eliminar", description = "Tiempo de eliminación lógica de usuario")
     public ResponseEntity<Void> eliminarUsuario(@PathVariable Integer id) {
         boolean eliminado = administradorService.eliminarUsuarioLogico(id);
 
@@ -98,6 +92,7 @@ public class AdminController {
 
     // EXPORTAR A EXCEL (Se mantiene)
     @GetMapping("/usuarios/exportar")
+    @Timed(value = "finli.admin.usuarios.exportacion", description = "Tiempo de exportación de usuarios a Excel")
     public ResponseEntity<byte[]> exportarUsuariosAExcel() {
         try {
             List<Usuario> usuarios = administradorService.obtenerListaDeUsuariosParaExportar();

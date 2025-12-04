@@ -20,6 +20,7 @@ import com.finli.repository.PasswordResetTokenRepository;
 import com.finli.repository.UsuarioRepository;
 import com.google.common.base.Preconditions;
 
+import io.micrometer.core.annotation.Timed;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -31,6 +32,7 @@ public class ServicioAutenticacion {
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final EmailService emailService;
     private final SuscripcionService suscripcionService;
+    private final MetricsService metricsService;
 
     /* ========== METODO BUSCAR POR CORREO ========== */
     public Optional<Usuario> buscarPorCorreo(String correo) {
@@ -38,6 +40,7 @@ public class ServicioAutenticacion {
         return repo.findByCorreo(correo);
     }
 
+    @Timed(value = "finli.auth.registro.service", description = "Tiempo de servicio de registro")
     public Usuario registrar(RegistroRequest dto) {
         if (!dto.getContrasena().equals(dto.getConfirmarContrasena())) {
             throw new RuntimeException("Las contraseñas no coinciden");
@@ -65,6 +68,9 @@ public class ServicioAutenticacion {
         
         // ENVIAR CORREO DE BIENVENIDA DESPUÉS DEL REGISTRO
         enviarCorreoBienvenida(nuevoUsuario);
+
+        // Métricas
+        metricsService.incrementUsuarioRegistrado();
 
         return nuevoUsuario;
     }
@@ -239,21 +245,28 @@ public class ServicioAutenticacion {
             """.formatted(nombre, apellido, nombre, apellido, email);
     }
 
+    @Timed(value = "finli.auth.login.service", description = "Tiempo de servicio de login")
     public Usuario login(String email, String rawPassword) {
         Usuario u = repo.findByCorreo(email)
-                .orElseThrow(() -> new RuntimeException("Credenciales inválidas"));
+                .orElseThrow(() -> {
+                    metricsService.incrementLoginFallido();
+                    return new RuntimeException("Credenciales inválidas");
+                });
 
         if (!BCrypt.checkpw(rawPassword, u.getContrasena())) {
+            metricsService.incrementLoginFallido();
             throw new RuntimeException("Credenciales inválidas");
         }
 
         int estado = u.getEstadoUsuario().getIdEstado();
 
         if (estado == 2) {
+            metricsService.incrementLoginFallido();
             throw new RuntimeException("Tu cuenta está SUSPENDIDA.");
         }
 
         if (estado == 5) {
+            metricsService.incrementLoginFallido();
             throw new RuntimeException("Tu cuenta está BLOQUEADA.");
         }
 
@@ -262,10 +275,12 @@ public class ServicioAutenticacion {
             int estadoSus = sus.getEstadoSuscripcion().getIdEstadoSuscripcion();
 
             if (estadoSus == 2) {
+                metricsService.incrementLoginFallido();
                 throw new RuntimeException("Tu suscripción está SUSPENDIDA.");
             }
 
             if (estadoSus == 3) {
+                metricsService.incrementLoginFallido();
                 throw new RuntimeException("Tu suscripción fue CANCELADA.");
             }
 
@@ -274,10 +289,12 @@ public class ServicioAutenticacion {
             }
         }
 
+        metricsService.incrementLoginExitoso();
         return u;
     }
 
     @Transactional
+    @Timed(value = "finli.auth.recuperacion.service", description = "Tiempo de servicio de recuperación de contraseña")
     public void iniciarRecuperacion(String email) {
         try {
             System.out.println("🔍 Buscando usuario con email: " + email);

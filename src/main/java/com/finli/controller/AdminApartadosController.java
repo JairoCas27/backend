@@ -4,7 +4,7 @@ import com.finli.dto.CategoriaDTO;
 import com.finli.dto.SubcategoriaDTO;
 import com.finli.dto.MedioPagoDTO;
 import com.finli.service.AdministradorService;
-
+import io.micrometer.core.annotation.Timed;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,8 +19,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.List;
 
@@ -34,29 +32,28 @@ public class AdminApartadosController {
     private AdministradorService administradorService;
 
     // --- 1. LISTAR CATEGORÍAS PREDETERMINADAS (GET) ---
-    // Endpoint: /api/admin/categories
     @GetMapping("/categories")
+    @Timed(value = "finli.admin.categorias.listar", description = "Tiempo de listado de categorías")
     public ResponseEntity<List<CategoriaDTO>> listarCategorias() {
         List<CategoriaDTO> categorias = administradorService.listarCategoriasPredeterminadas();
         return ResponseEntity.ok(categorias);
     }
 
     // --- 2. LISTAR SUBCATEGORÍAS POR CATEGORÍA (GET) ---
-    // Endpoint: /api/admin/categories/{id}/subcategories
     @GetMapping("/categories/{id}/subcategories")
+    @Timed(value = "finli.admin.subcategorias.listar", description = "Tiempo de listado de subcategorías por categoría")
     public ResponseEntity<List<SubcategoriaDTO>> listarSubcategoriasPorCategoria(@PathVariable Integer id) {
         try {
-            // Llamamos al método nuevo que devuelve el DTO de subcategorías
             List<SubcategoriaDTO> subcategorias = administradorService.obtenerSubcategoriasPorCategoria(id);
             return ResponseEntity.ok(subcategorias);
         } catch (RuntimeException e) {
-            // Manejamos el caso de que el ID de categoría no exista
             return ResponseEntity.notFound().build();
         }
     }
 
     /* ------ EDITAR CATEGORÍA (PUT) ------ */
     @PutMapping("/categories/{id}")
+    @Timed(value = "finli.admin.categorias.actualizar", description = "Tiempo de actualización de categoría")
     public ResponseEntity<CategoriaDTO> actualizarCategoria(@PathVariable Integer id,
             @RequestBody CategoriaDTO dto) {
         CategoriaDTO updated = administradorService.actualizarCategoriaPredeterminada(id, dto);
@@ -65,28 +62,29 @@ public class AdminApartadosController {
 
     /* ------ ELIMINAR CATEGORÍA (DELETE) ------ */
     @DeleteMapping("/categories/{id}")
+    @Timed(value = "finli.admin.categorias.eliminar", description = "Tiempo de eliminación de categoría")
     public ResponseEntity<Void> eliminarCategoria(@PathVariable Integer id) {
         administradorService.eliminarCategoriaPredeterminada(id);
-        return ResponseEntity.noContent().build(); // 204
+        return ResponseEntity.noContent().build();
     }
 
     // --- 3. LISTAR MEDIOS DE PAGO PREDETERMINADOS (GET) ---
-    // Endpoint: /api/admin/payment-methods
     @GetMapping("/payment-methods")
+    @Timed(value = "finli.admin.medios_pago.listar", description = "Tiempo de listado de medios de pago")
     public ResponseEntity<List<MedioPagoDTO>> listarMediosPagoPredeterminados() {
-        // Llama al nuevo método del servicio que filtra por usuario=null y asigna
-        // íconos
         List<MedioPagoDTO> medios = administradorService.loadDefaultPaymentMethods();
         return ResponseEntity.ok(medios);
     }
 
     @PostMapping("/payment-methods")
+    @Timed(value = "finli.admin.medios_pago.crear", description = "Tiempo de creación de medio de pago")
     public ResponseEntity<MedioPagoDTO> crearMedioPago(@RequestBody MedioPagoDTO dto) {
         MedioPagoDTO creado = administradorService.crearMedioPagoPredeterminado(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(creado);
     }
 
     @PutMapping("/payment-methods/{id}")
+    @Timed(value = "finli.admin.medios_pago.actualizar", description = "Tiempo de actualización de medio de pago")
     public ResponseEntity<MedioPagoDTO> actualizarMedioPago(@PathVariable Integer id,
             @RequestBody MedioPagoDTO dto) {
         log.warn("🔹 Controlador PUT id={} body={}", id, dto);
@@ -94,35 +92,39 @@ public class AdminApartadosController {
     }
 
     @DeleteMapping("/payment-methods/{id}")
+    @Timed(value = "finli.admin.medios_pago.eliminar", description = "Tiempo de eliminación de medio de pago")
     public ResponseEntity<Void> eliminarMedioPago(@PathVariable Integer id) {
         administradorService.eliminarMedioPagoPredeterminado(id);
-        return ResponseEntity.noContent().build(); // 204 No Content
+        return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/subcategories/{id}")
-public ResponseEntity<Void> eliminarSubcategoria(@PathVariable Integer id) {
-    administradorService.eliminarSubcategoriaPredeterminada(id);
-    return ResponseEntity.noContent().build();
-}
+    @Timed(value = "finli.admin.subcategorias.eliminar", description = "Tiempo de eliminación de subcategoría")
+    public ResponseEntity<Void> eliminarSubcategoria(@PathVariable Integer id) {
+        administradorService.eliminarSubcategoriaPredeterminada(id);
+        return ResponseEntity.noContent().build();
+    }
 
-@PutMapping("/subcategories/{id}")
-public ResponseEntity<SubcategoriaDTO> actualizarSubcategoria(
-        @PathVariable Integer id,
-        @RequestBody SubcategoriaDTO dto) {
-    SubcategoriaDTO updated = administradorService.actualizarSubcategoriaPredeterminada(id, dto);
-    return ResponseEntity.ok(updated);
-}
+    @PutMapping("/subcategories/{id}")
+    @Timed(value = "finli.admin.subcategorias.actualizar", description = "Tiempo de actualización de subcategoría")
+    public ResponseEntity<SubcategoriaDTO> actualizarSubcategoria(
+            @PathVariable Integer id,
+            @RequestBody SubcategoriaDTO dto) {
+        SubcategoriaDTO updated = administradorService.actualizarSubcategoriaPredeterminada(id, dto);
+        return ResponseEntity.ok(updated);
+    }
 
-@PostMapping("/subcategories")
-public ResponseEntity<SubcategoriaDTO> crearSubcategoria(@RequestBody SubcategoriaDTO dto) {
-    SubcategoriaDTO creada = administradorService.crearSubcategoriaPredeterminada(dto);
-    return ResponseEntity.status(HttpStatus.CREATED).body(creada);
-}
+    @PostMapping("/subcategories")
+    @Timed(value = "finli.admin.subcategorias.crear", description = "Tiempo de creación de subcategoría")
+    public ResponseEntity<SubcategoriaDTO> crearSubcategoria(@RequestBody SubcategoriaDTO dto) {
+        SubcategoriaDTO creada = administradorService.crearSubcategoriaPredeterminada(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(creada);
+    }
 
-@PostMapping("/categories")
-public ResponseEntity<CategoriaDTO> crearCategoria(@RequestBody CategoriaDTO dto) {
-    CategoriaDTO creada = administradorService.crearCategoriaPredeterminada(dto);
-    return ResponseEntity.status(HttpStatus.CREATED).body(creada);
-}
-
+    @PostMapping("/categories")
+    @Timed(value = "finli.admin.categorias.crear", description = "Tiempo de creación de categoría")
+    public ResponseEntity<CategoriaDTO> crearCategoria(@RequestBody CategoriaDTO dto) {
+        CategoriaDTO creada = administradorService.crearCategoriaPredeterminada(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(creada);
+    }
 }

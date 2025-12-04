@@ -5,6 +5,7 @@ import com.finli.dto.PasswordResetRequest;
 import com.finli.dto.RegistroRequest;
 import com.finli.model.Usuario;
 import com.finli.service.ServicioAutenticacion;
+import io.micrometer.core.annotation.Timed;
 import lombok.RequiredArgsConstructor;
 
 import java.util.Map;
@@ -22,18 +23,18 @@ public class AuthController {
     private final ServicioAutenticacion servicio;
 
     @PostMapping("/login")
+    @Timed(value = "finli.auth.login", description = "Tiempo de proceso de login")
     public ResponseEntity<?> login(@RequestBody LoginRequest dto) {
         try {
             Usuario u = servicio.login(dto.getEmail(), dto.getContrasena());
-            // antes: return ResponseEntity.ok(u);
             return ResponseEntity.ok(servicio.toResponse(u));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
-        
     }
 
     @PostMapping("/register")
+    @Timed(value = "finli.auth.register", description = "Tiempo de proceso de registro")
     public ResponseEntity<?> register(@RequestBody RegistroRequest dto) {
         try {
             Usuario u = servicio.registrar(dto);
@@ -45,6 +46,7 @@ public class AuthController {
 
     // ENDPOINT: SOLICITAR RECUPERACIÓN
     @PostMapping("/forgot-password")
+    @Timed(value = "finli.auth.forgot_password", description = "Tiempo de proceso de recuperación de contraseña")
     public ResponseEntity<String> forgotPassword(@RequestBody Map<String, String> request) {
         String email = request.get("email");
         if (email == null || email.isBlank()) {
@@ -63,8 +65,8 @@ public class AuthController {
     }
 
     // RESTABLECER CONTRASEÑA 
-
     @PostMapping("/reset-password")
+    @Timed(value = "finli.auth.reset_password", description = "Tiempo de proceso de restablecimiento de contraseña")
     public ResponseEntity<String> resetPassword(@RequestBody PasswordResetRequest request) {
         try {
             // Llama al método del servicio
